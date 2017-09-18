@@ -38,26 +38,23 @@ class BattleshipHTTPRequestHandler(BaseHTTPRequestHandler):
   
   #handle GET commands
 	def do_GET(self):
-		rootdir = os.path.dirname(os.path.abspath(__file__)) + '\\'  #file location
-		print(os.path.dirname(os.path.abspath(__file__)))
 		print(self.path)
-		try:
-			if self.path.endswith('.html'):
-				f = open(rootdir + self.path) #open requested file
+		rootdir = os.path.dirname(os.path.abspath(__file__))+ "\\"
+		#Make sure path will open the HTML file
+		page = open(rootdir + self.path[1:], "r")
+		contents = page.read()
 
-				#send code 200 response
-				self.send_response(200)
+		#GET should be used to get the HTML format of the game boards
+		self.protocol_version = 'HTTP/1.1'
+		self.send_response(200)
+		self.send_header("User-Agent", "application/x-www-form-urlencoded")
+		self.send_header("Content-type", "text/html")
+		self.end_headers()
+		elf.wfile.write(str.encode(contents))
+		return
 
-				#send header first
-				self.send_header('Content-type','text-html')
-				self.end_headers()
-				#send file content to client
-				self.wfile.write(f.read().encode("utf-8")) #In python 3.x you need to convert to utf-8
-				f.close()
-				return
-
-		except IOError:
-			self.send_error(404, 'file not found')
+		#except IOError:
+		#	self.send_error(404, 'file not found')
 
 	def do_POST(self):
 		length = int(self.headers.get('Content-Length'))
@@ -155,9 +152,9 @@ def game_logic(message):
 	else:
 		board[guess] = "O"
 
-	#if s != '0':
-	#	if(ship_D+ship_S+ship_R+ship_B+ship_C == 0):
-	s = 'G'
+	if s != '0':
+		if(ship_D+ship_S+ship_R+ship_B+ship_C == 0):
+			s = 'G'
 
 	write_to_file(board, rootdir,s)
 
