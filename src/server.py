@@ -19,45 +19,173 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 import sys
+import re
 
-#Initialization Variables for server setup 
-port_num = int(sys.argv[1])
-local_board_file = sys.argv[2]
+#ship_C, ship_B, ship_R, ship_S, ship_D
+ship_C, ship_B, ship_R, ship_S, ship_D = 5, 4, 3, 3, 2
+
+def main():
+
+	#ship_C#, ship_B, ship_R, ship_S, ship_D
+	
+	#Initialization Variables for server setup 
+	port_num = int(sys.argv[1])
+	local_board_file = sys.argv[2]
+	run(port_num)
 
 #Create custom HTTPRequestHandler class
 class BattleshipHTTPRequestHandler(BaseHTTPRequestHandler):
   
-  #handle GET command
-  def do_GET(self):
-    rootdir = 'C:/Users/Ben/Desktop/Fall 2017/CSCI466_Lab1/CSCI446_Lab1/src/' #file location
-    print(self.path)
-    try:
-      if self.path.endswith('.html'):
-        f = open(rootdir + self.path) #open requested file
+  #handle GET commands
+	def do_GET(self):
+		rootdir = os.path.dirname(os.path.abspath(__file__)) + '\\'  #file location
+		print(os.path.dirname(os.path.abspath(__file__)))
+		print(self.path)
+		try:
+			if self.path.endswith('.html'):
+				f = open(rootdir + self.path) #open requested file
 
-        #send code 200 response
-        self.send_response(200)
+				#send code 200 response
+				self.send_response(200)
 
-        #send header first
-        self.send_header('Content-type','text-html')
-        self.end_headers()
+				#send header first
+				self.send_header('Content-type','text-html')
+				self.end_headers()
+				#send file content to client
+				self.wfile.write(f.read().encode("utf-8")) #In python 3.x you need to convert to utf-8
+				f.close()
+				return
 
-        #send file content to client
-        self.wfile.write(f.read().encode("utf-8")) #In python 3.x you need to convert to utf-8
-        f.close()
-        return
-      
-    except IOError:
-      self.send_error(404, 'file not found')
-  
-def run():
+		except IOError:
+			self.send_error(404, 'file not found')
+
+	def do_POST(self):
+		length = int(self.headers.get('Content-Length'))
+		body = self.rfile.read(length)
+		print(body)
+
+		response, code = game_logic(body)
+
+		#HTTP OK (200) response 
+		self.protocol_version = 'HTTP/1.1'
+		self.send_response(code)
+		self.send_header("User-Agent", "application/x-www-form-urlencoded")
+		self.send_header("Content-type", "text/html")
+		self.send_header("Response", response)
+		self.end_headers()
+ 
+def game_logic(message):
+	board = []
+	message = str(message)
+
+	#Parses the url and provides the x,y coordinates
+	x = message[4:6]
+	x = int(re.search(r'\d+', x).group())
+
+	y = message[-3:-1]
+	y = int(re.search(r'\d+', y).group())
+	print(x)
+	print(y)
+
+	#Converts x,y coordinates into an list index
+	if x<10 and y<10:
+		guess = ((y*10)+ x)
+		print ("guess = " , guess)
+	else:
+		h, s, code = 0, str(0), 404
+		return "hit="+ str(h) + "&sink=" + str(s) , code
+
+	#Recovers board data from given text file
+	rootdir = os.path.dirname(os.path.abspath(__file__))[:-3]  #file location
+	f = open(rootdir + 'board.txt', 'r')
+	while True:
+		ch=f.read(1)
+		if not ch: break
+		if not ch == "\n":
+			board.extend(ch)
+	f.close()
+
+	#Initial response variables
+	h, s, code = 1, str(0), 200
+	print(board[guess])
+	if board[guess] == "X" or board[guess] == "O":
+		h, code = 0, 410
+		print ("this is the already shot at case")
+	elif board[guess] == "_":
+		h = 0
+		print ("this is the miss case")
+	elif board[guess] == "C":
+		global ship_C
+		ship_C-=1
+		if ship_C == 0:
+			s = 'C'
+		print ("this is the C case")
+	elif board[guess] == "B":
+		global ship_B
+		ship_B-=1
+		if ship_B == 0:
+			s = 'B'
+		print ("this is the B case")
+	elif board[guess] == "R":
+		global ship_R
+		ship_R-=1
+		if ship_R == 0:
+			s = 'R'
+		print ("this is the R case")
+	elif board[guess] == "S":
+		global ship_S
+		ship_S-=1
+		if ship_S == 0:
+			s = 'S'
+		print ("this is the S case")
+	elif board[guess] == "D":
+		global ship_D
+		ship_D-=1
+		if ship_D == 0:
+			s = 'D'
+		print ("this is the D case")
+	else:
+		h, code = 0, 400
+		print ("you broke the game, are you happy now?")
+
+	if h == 1:
+		board[guess] = "X"
+	elif board[guess] == "X":
+		board[guess] = "X"
+	else:
+		board[guess] = "O"
+
+	#if s != '0':
+	#	if(ship_D+ship_S+ship_R+ship_B+ship_C == 0):
+	s = 'G'
+
+	write_to_file(board, rootdir,s)
+
+	return "hit="+ str(h) + "&sink=" + str(s) , code
+
+def write_to_file(board, rootdir, s):
+	newBoard = []
+	for x in range(0,100):
+		newBoard.extend(board[x])
+		if x%10 == 9:
+			newBoard.extend("\n")
+	g = open(rootdir + 'board.txt', 'w')
+
+	if s == 'G':
+		newBoard = []
+		newBoard.extend("\n\n\n\n  YOU LOSE!")
+
+	for x in newBoard:
+		g.write(x)
+	g.close()
+
+def run(port_num):
   print('http server is starting...')
 
-  server_address = ('127.0.0.1', port_num)
+  server_address = ('127.0.0.1', port_num) #('127.0.0.1', port_num)
   httpd = HTTPServer(server_address, BattleshipHTTPRequestHandler)
 
   print('http server is running...')
   httpd.serve_forever()
   
-if __name__ == '__main__':
-  run()
+main()
