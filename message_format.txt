@@ -1,0 +1,29 @@
+Networks - CSCI466
+Ben Rhuman & Taylor Sheffels
+
+Operation procedure:
+1.  Start server using the command line prompt:
+	python server.py portNumber battleshipBoardFileName
+	(ex. python server.py 5000 board.txt)
+  Note: Make sure to update the IP of the server in the code
+
+2. "battleshipBoard.html" is the interface for seeing your
+	own board and any knowledge you have collected about your
+	opponents board.
+
+3. 	To fire on your opponent, you must invoke the client
+	using the command:
+	python client.py httpServerIP PortNumber x_coordinate y_coordinate
+	(ex. python client.py 127.0.0.1 5000 5 7)
+	note: httpServerIP needs to be the IP of your opponents server.
+
+Message format:
+To communicate a "fire" command to the server we take the inputed coordinates and process a POST command in the form of "x=0&y=0", where 0 is just an example of any possible integer. 
+
+The response given by POST includes information on whether a ship was hit or sunk. It is in the form of "hit=1&sink=C". For hit, 0 represents a miss and a 1 represents a hit. For sink when a ship is sunk the type of ship sunk is represented by the first character of its name, such as 'C', 'B', 'D', 'R', and 'S'. '0' is used for sink when nothing has been sunk that turn. A special character 'G' is used in the sink command to represent the sinking of the final ship and thus the end of the game.
+
+The POST response codes are as follows:
+200- successful fire
+400- bad request form
+404- shot is out of bounds
+410- the location had already been hit
